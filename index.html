@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>WeightLoss PMA</title>
+<meta name="theme-color" content="#080808">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap');
+:root{
+  --bg:#080808;--s1:#101010;--s2:#181818;--s3:#222;
+  --b:#2a2a2a;--a:#c8ff00;--a2:#ff6b35;
+  --red:#ff3b3b;--txt:#f0f0f0;--dim:#555;
+  --good:#c8ff00;--warn:#ffb800;--bad:#ff3b3b;
+  --blue:#6b8cff;--purple:#b06bff;--teal:#00d4aa;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;}
+
+/* ── AUTH SCREEN ── */
+#authScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;}
+.auth-box{background:var(--s1);border:1px solid var(--b);border-radius:16px;padding:36px;width:100%;max-width:380px;}
+.auth-logo{font-family:'Bebas Neue',sans-serif;font-size:42px;color:var(--a);letter-spacing:2px;margin-bottom:4px;}
+.auth-sub{font-family:'DM Mono',monospace;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:28px;}
+.auth-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;display:block;}
+.auth-input{width:100%;background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:11px 14px;color:var(--txt);font-family:'DM Mono',monospace;font-size:13px;outline:none;margin-bottom:14px;transition:border-color .2s;}
+.auth-input:focus{border-color:var(--a);}
+.auth-btn{width:100%;background:var(--a);color:#000;border:none;border-radius:8px;padding:13px;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;cursor:pointer;margin-top:4px;}
+.auth-btn:hover{opacity:.88;}
+.auth-err{color:var(--bad);font-family:'DM Mono',monospace;font-size:11px;margin-top:8px;display:none;}
+
+/* ── APP SHELL ── */
+#appShell{display:none;}
+.topbar{background:var(--s1);border-bottom:1px solid var(--b);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.topbar-logo{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--a);letter-spacing:1px;}
+.topbar-user{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);display:flex;align-items:center;gap:10px;}
+.notif-dot{width:8px;height:8px;border-radius:50%;background:var(--bad);display:none;}
+.logout-btn{background:transparent;border:1px solid var(--b);border-radius:5px;color:var(--dim);font-family:'DM Mono',monospace;font-size:9px;padding:4px 8px;cursor:pointer;}
+.logout-btn:hover{border-color:var(--bad);color:var(--bad);}
+
+/* ── BOTTOM NAV ── */
+.bottomnav{position:fixed;bottom:0;left:0;right:0;background:var(--s1);border-top:1px solid var(--b);display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom);}
+.bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px;border:none;background:transparent;color:var(--dim);font-family:'DM Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;transition:color .2s;}
+.bnav-btn.on{color:var(--a);}
+.bnav-icon{font-size:20px;}
+
+/* ── PAGES ── */
+.page{display:none;padding:20px 20px 90px;max-width:900px;margin:0 auto;}
+.page.on{display:block;}
+
+/* ── CARDS ── */
+.card{background:var(--s1);border:1px solid var(--b);border-radius:10px;padding:16px;margin-bottom:14px;}
+.clabel{font-family:'DM Mono',monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:5px;}
+.cval{font-family:'Bebas Neue',sans-serif;font-size:34px;line-height:1;}
+.csub{font-size:11px;color:var(--dim);margin-top:2px;font-family:'DM Mono',monospace;}
+.good{color:var(--good);}.warn{color:var(--warn);}.bad{color:var(--bad);}.neu{color:var(--txt);}.blue{color:var(--blue);}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+
+/* ── HOME PAGE ── */
+.quick-log{background:var(--a);border-radius:12px;padding:18px;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;cursor:pointer;border:none;width:100%;}
+.ql-text{text-align:left;}
+.ql-title{font-family:'Bebas Neue',sans-serif;font-size:22px;color:#000;letter-spacing:1px;}
+.ql-sub{font-family:'DM Mono',monospace;font-size:10px;color:rgba(0,0,0,.6);}
+.ql-icon{font-size:32px;}
+.today-summary{background:var(--s1);border:1px solid var(--b);border-radius:10px;padding:16px;margin-bottom:14px;}
+.ts-title{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;}
+.mrow{margin-bottom:10px;}
+.mhdr{display:flex;justify-content:space-between;margin-bottom:3px;}
+.mname{font-size:12px;font-weight:500;}
+.mnums{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);}
+.mtrack{height:5px;background:var(--s3);border-radius:3px;overflow:hidden;}
+.mfill{height:100%;border-radius:3px;transition:width .5s;}
+.streak-card{background:linear-gradient(135deg,rgba(200,255,0,.1),rgba(200,255,0,.03));border:1px solid rgba(200,255,0,.2);border-radius:10px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;}
+.streak-num{font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--a);line-height:1;}
+.streak-info{}
+.streak-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;}
+.streak-sub{font-size:13px;color:var(--txt);margin-top:2px;}
+
+/* ── MESSAGES ── */
+.msg-banner{background:rgba(107,140,255,.1);border:1px solid rgba(107,140,255,.25);border-radius:8px;padding:12px 14px;margin-bottom:12px;cursor:pointer;}
+.msg-from{font-family:'DM Mono',monospace;font-size:9px;color:var(--blue);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;}
+.msg-text{font-size:13px;color:var(--txt);}
+
+/* ── LOG PAGE ── */
+.log-section{margin-bottom:18px;}
+.log-section-title{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--a);letter-spacing:1px;margin-bottom:10px;}
+.method-tabs{display:flex;gap:8px;margin-bottom:14px;}
+.method-tab{flex:1;background:var(--s2);border:1px solid var(--b);border-radius:7px;padding:10px;text-align:center;cursor:pointer;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);transition:all .2s;}
+.method-tab.on{background:rgba(200,255,0,.1);border-color:var(--a);color:var(--a);}
+.method-content{display:none;}
+.method-content.on{display:block;}
+
+/* SPORT CALCULATOR */
+.sport-calc{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:14px;}
+.sport-result{background:rgba(200,255,0,.08);border:1px solid rgba(200,255,0,.2);border-radius:7px;padding:12px;margin-top:10px;display:none;}
+.sport-result-val{font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--a);}
+.sport-result-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;}
+
+/* AI SCANNER */
+.scanner-area{background:var(--s2);border:2px dashed var(--b);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:10px;}
+.scanner-area:hover{border-color:var(--a);}
+.scanner-icon{font-size:40px;margin-bottom:8px;}
+.scanner-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--dim);}
+.scanner-preview{width:100%;border-radius:8px;margin-bottom:10px;display:none;}
+.ai-result{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:12px;display:none;}
+.ai-result-title{font-family:'DM Mono',monospace;font-size:10px;color:var(--a);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+
+/* INPUTS */
+.igrp{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
+.igrp label{font-family:'DM Mono',monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;}
+.igrp input,.igrp select,.igrp textarea{background:var(--s2);border:1px solid var(--b);border-radius:7px;padding:9px 11px;color:var(--txt);font-family:'DM Mono',monospace;font-size:12px;outline:none;transition:border-color .2s;width:100%;}
+.igrp input:focus,.igrp select:focus,.igrp textarea:focus{border-color:var(--a);}
+.igrp select option{background:var(--s2);}
+.btn-primary{background:var(--a);color:#000;border:none;border-radius:8px;padding:12px 20px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;cursor:pointer;width:100%;}
+.btn-primary:hover{opacity:.85;}
+.btn-secondary{background:transparent;color:var(--a);border:1px solid var(--a);border-radius:8px;padding:10px 20px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;width:100%;}
+
+/* MEAL ROWS */
+.meal-line{display:grid;grid-template-columns:70px 1fr 55px 50px 50px 50px 24px;gap:6px;margin-bottom:6px;align-items:center;}
+.meal-line input{background:#111;border:1px solid #252525;border-radius:5px;padding:6px 7px;color:var(--txt);font-family:'DM Mono',monospace;font-size:11px;outline:none;}
+.meal-line input:focus{border-color:var(--a);}
+.btn-rm{background:transparent;border:none;color:var(--dim);cursor:pointer;font-size:12px;padding:2px;}
+.btn-add-meal{background:transparent;border:1px dashed var(--b);border-radius:5px;color:var(--dim);font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;padding:6px;width:100%;margin-top:4px;}
+.btn-add-meal:hover{border-color:var(--a);color:var(--a);}
+.tot-line{font-family:'DM Mono',monospace;font-size:11px;color:var(--dim);margin-top:8px;}
+.tot-line span{color:var(--txt);}
+
+/* TEMPLATES */
+.template-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.template-card{background:var(--s2);border:1px solid var(--b);border-radius:7px;padding:10px;cursor:pointer;transition:border-color .2s;}
+.template-card:hover{border-color:var(--a);}
+.tc-name{font-size:12px;font-weight:500;margin-bottom:3px;}
+.tc-macros{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);}
+
+/* CHARTS */
+.chart-card{background:var(--s1);border:1px solid var(--b);border-radius:10px;padding:16px;margin-bottom:14px;}
+.chart-title{font-family:'DM Mono',monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;}
+.chart-wrap{position:relative;height:180px;}
+
+/* LOG TABLE */
+.log-table-wrap{overflow-x:auto;}
+.ltable{width:100%;border-collapse:collapse;min-width:600px;}
+.ltable th{font-family:'DM Mono',monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;text-align:left;padding:6px 8px;border-bottom:1px solid var(--b);}
+.ltable td{padding:8px 8px;font-size:11px;border-bottom:1px solid #141414;font-family:'DM Mono',monospace;}
+.drow{cursor:pointer;}
+.drow:hover td{background:rgba(200,255,0,.02);}
+.msubrow td{background:#0b0b0b;padding:0;}
+.msubrow.hide{display:none;}
+.xi{color:var(--dim);font-size:9px;display:inline-block;transition:transform .2s;}
+.xi.open{transform:rotate(90deg);}
+
+/* BEST DAY */
+.bestday{background:var(--s1);border:1px solid rgba(200,255,0,.2);border-radius:10px;padding:16px;margin-bottom:14px;}
+.bdtitle{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--a);letter-spacing:1px;margin-bottom:2px;}
+.bdsub{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);margin-bottom:10px;}
+.bdmeal{background:var(--s2);border-radius:5px;padding:6px 9px;display:flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:10px;margin-bottom:3px;}
+.bdt{color:var(--dim);font-size:9px;min-width:55px;}
+.bdf{flex:1;}
+.bdk{color:var(--a2);font-size:9px;}
+.bdp{color:var(--a);font-size:9px;min-width:28px;text-align:right;}
+
+/* ADMIN */
+.user-card{background:var(--s1);border:1px solid var(--b);border-radius:10px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:12px;}
+.user-avatar{width:40px;height:40px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--a);flex-shrink:0;}
+.user-info{flex:1;}
+.user-name{font-size:14px;font-weight:600;margin-bottom:2px;}
+.user-meta{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);}
+.user-status{text-align:right;}
+.status-badge{display:inline-block;padding:3px 8px;border-radius:4px;font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.5px;}
+.sb-green{background:rgba(200,255,0,.12);color:var(--good);}
+.sb-red{background:rgba(255,59,59,.12);color:var(--bad);}
+.sb-warn{background:rgba(255,184,0,.12);color:var(--warn);}
+.flag{color:var(--bad);font-size:18px;}
+
+/* PROFILE */
+.bmi-bar{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:6px 0 2px;}
+.bmiseg{flex:1;}
+.bmimark{position:relative;height:10px;}
+.bmidot{position:absolute;width:2px;height:10px;background:var(--a);border-radius:1px;transform:translateX(-50%);transition:left .5s;}
+
+/* ALERTS */
+.alert{border-radius:7px;padding:9px 12px;font-family:'DM Mono',monospace;font-size:10px;margin-bottom:8px;}
+.aw{background:rgba(255,184,0,.08);border:1px solid rgba(255,184,0,.2);color:var(--warn);}
+.ag{background:rgba(200,255,0,.06);border:1px solid rgba(200,255,0,.15);color:var(--good);}
+.ab{background:rgba(255,59,59,.08);border:1px solid rgba(255,59,59,.2);color:var(--bad);}
+
+/* MESSAGES PAGE */
+.msg-card{background:var(--s1);border:1px solid var(--b);border-radius:8px;padding:12px;margin-bottom:8px;}
+.msg-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.msg-from2{font-family:'DM Mono',monospace;font-size:9px;color:var(--blue);text-transform:uppercase;letter-spacing:1px;}
+.msg-date{font-family:'DM Mono',monospace;font-size:9px;color:var(--dim);}
+.msg-body{font-size:13px;color:var(--txt);}
+.msg-unread{border-color:rgba(107,140,255,.4);}
+
+/* PHOTO UPLOAD */
+.photo-upload-btn{background:var(--s2);border:2px dashed var(--b);border-radius:8px;padding:16px;text-align:center;cursor:pointer;width:100%;margin-bottom:10px;}
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.photo-item{aspect-ratio:1;border-radius:7px;overflow:hidden;background:var(--s2);}
+.photo-item img{width:100%;height:100%;object-fit:cover;}
+
+/* WEEK DAYS */
+.wdays{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:12px;}
+.wday{background:var(--s2);border:1px solid var(--b);border-radius:6px;padding:6px 2px;text-align:center;font-family:'DM Mono',monospace;}
+.wday.ok{border-color:var(--good);}
+.wday.off{border-color:var(--bad);}
+.wday.empty{opacity:.25;}
+.wdl{font-size:7px;color:var(--dim);text-transform:uppercase;margin-bottom:2px;}
+.wdw{font-family:'Bebas Neue',sans-serif;font-size:13px;}
+.wdi{font-size:11px;}
+.wdk{font-size:7px;color:var(--dim);}
+
+/* BADGES */
+.badge-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.badge-card{background:var(--s1);border:1px solid var(--b);border-radius:9px;padding:13px;text-align:center;}
+.badge-card.earned{border-color:var(--a);background:rgba(200,255,0,.04);}
+.badge-card.locked{opacity:.3;}
+.bicon{font-size:24px;margin-bottom:5px;}
+.bname{font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;margin-bottom:2px;}
+.bdesc{font-size:10px;color:var(--dim);}
+.bearned{font-family:'DM Mono',monospace;font-size:8px;color:var(--a);margin-top:4px;}
+
+/* SECTION TITLE */
+.stitle{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--a);letter-spacing:1px;margin-bottom:12px;}
+.slabel{font-family:'DM Mono',monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;}
+.div{height:1px;background:var(--b);margin:12px 0;}
+
+/* SPINNER */
+.spinner{display:flex;align-items:center;justify-content:center;padding:40px;font-family:'DM Mono',monospace;font-size:12px;color:var(--dim);}
+
+/* TOAST */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--s1);border:1px solid var(--a);border-radius:8px;padding:10px 18px;font-family:'DM Mono',monospace;font-size:12px;color:var(--a);z-index:999;display:none;white-space:nowrap;}
+
+@media(min-width:600px){
+  .g4{grid-template-columns:repeat(4,1fr);}
+  .meal-line{grid-template-columns:80px 1fr 65px 55px 55px 55px 26px;}
+  .badge-grid{grid-template-columns:repeat(4,1fr);}
+}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="authScreen">
+  <div class="auth-box">
+    <div class="auth-logo">WEIGHTLOSS PMA</div>
+    <div class="auth-sub">Personal tracking — Bali</div>
+    <label class="auth-label">Email</label>
+    <input class="auth-input" type="email" id="authEmail" placeholder="jouw@email.com">
+    <label class="auth-label">Wachtwoord</label>
+    <input class="auth-input" type="password" id="authPass" placeholder="••••••••">
+    <button class="auth-btn" onclick="doLogin()">INLOGGEN</button>
+    <div class="auth-err" id="authErr"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appShell">
+  <div class="topbar">
+    <div class="topbar-logo">WL PMA</div>
+    <div class="topbar-user">
+      <div class="notif-dot" id="notifDot"></div>
+      <span id="topbarName">—</span>
+      <button class="logout-btn" onclick="doLogout()">Uitloggen</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- HOME -->
+  <div class="page on" id="pg-home">
+    <div id="msgBanners"></div>
+    <button class="quick-log" onclick="goPage('log')">
+      <div class="ql-text"><div class="ql-title">+ LOG MAALTIJD</div><div class="ql-sub">Foto, handmatig of template</div></div>
+      <div class="ql-icon">🍽</div>
+    </button>
+    <div class="streak-card">
+      <div class="streak-num" id="homeStreak">0</div>
+      <div class="streak-info"><div class="streak-label">Dagen op schema</div><div class="streak-sub" id="homeStreakSub">Begin vandaag!</div></div>
+    </div>
+    <div class="today-summary">
+      <div class="ts-title">Vandaag</div>
+      <div class="mrow"><div class="mhdr"><span class="mname">Calorieën</span><span class="mnums" id="hKcal">—</span></div><div class="mtrack"><div class="mfill" id="hKcalBar" style="width:0%;background:var(--a2)"></div></div></div>
+      <div class="mrow"><div class="mhdr"><span class="mname">Proteïne</span><span class="mnums" id="hProt">—</span></div><div class="mtrack"><div class="mfill" id="hProtBar" style="width:0%;background:var(--a)"></div></div></div>
+      <div class="mrow"><div class="mhdr"><span class="mname">Water</span><span class="mnums" id="hWater">—</span></div><div class="mtrack"><div class="mfill" id="hWaterBar" style="width:0%;background:var(--blue)"></div></div></div>
+    </div>
+    <div class="g2">
+      <div class="card"><div class="clabel">Gewicht</div><div class="cval neu" id="hWeight">—</div><div class="csub" id="hWeightSub">—</div></div>
+      <div class="card"><div class="clabel">Doel</div><div class="cval neu" id="hGoal">—</div><div class="csub" id="hGoalSub">—</div></div>
+    </div>
+    <div id="homeAlerts"></div>
+  </div>
+
+  <!-- LOG -->
+  <div class="page" id="pg-log">
+    <div class="stitle">LOG MAALTIJD</div>
+
+    <div class="igrp"><label>Datum</label><input type="date" id="logDate"></div>
+
+    <div class="method-tabs">
+      <div class="method-tab on" onclick="setMethod('manual')">✏️ Handmatig</div>
+      <div class="method-tab" onclick="setMethod('ai')">📸 AI Scanner</div>
+      <div class="method-tab" onclick="setMethod('sport')">🏃 Sport</div>
+      <div class="method-tab" onclick="setMethod('template')">⭐ Templates</div>
+    </div>
+
+    <!-- MANUAL -->
+    <div class="method-content on" id="mc-manual">
+      <div style="display:grid;grid-template-columns:70px 1fr 55px 50px 50px 50px 24px;gap:6px;margin-bottom:4px;">
+        <span style="font-family:'DM Mono',monospace;font-size:8px;color:var(--dim);">Tijd</span>
+        <span style="font-family:'DM Mono',monospace;font-size:8px;color:var(--dim);">Eten / Drinken</span>
+        <span style="font-family:'DM Mono',monospace;font-size:8px;color:var(--dim);">Kcal</span>
+        <span style="font-family:'DM Mono',monospace;font-size:8px;color:var(--dim);">Prot</span>
+        <span style="font-family:'DM Mono',monospace;font-size:8px;color:var(--dim);">Carbs</span>
+        <span style="font-family:'DM Mono',monospace;font-size:8px;color:var(--dim);">Fat</span>
+        <span></span>
+      </div>
+      <div id="mealRows"></div>
+      <button class="btn-add-meal" onclick="addMealRow()">+ Maaltijd</button>
+      <div class="tot-line">Totaal: <span id="totLine">0 kcal · 0g prot</span></div>
+      <div class="div"></div>
+      <div class="g2">
+        <div class="igrp"><label>Gewicht (kg)</label><input type="number" id="logWeight" step="0.1" placeholder="87.3"></div>
+        <div class="igrp"><label>Water (L)</label><input type="number" id="logWater" step="0.1" placeholder="2.5"></div>
+        <div class="igrp"><label>Bintangs 🍺</label><input type="number" id="logAlc" placeholder="0" min="0"></div>
+        <div class="igrp"><label>Energie (1-5)</label><select id="logEng"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+        <div class="igrp"><label>Honger (1-5)</label><select id="logHun"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+        <div class="igrp"><label>Activiteit</label>
+          <select id="logAct">
+            <option value="rest">🛋 Rustdag</option>
+            <option value="padel">🎾 Padel</option>
+            <option value="gym">💪 Gym</option>
+            <option value="padel-gym">🎾💪 Padel+Gym</option>
+          </select>
+        </div>
+      </div>
+      <div class="igrp"><label>Notitie</label><input type="text" id="logNote" placeholder="bijv. goed gespeeld..."></div>
+      <button class="btn-primary" onclick="saveLog()" style="margin-top:6px;">OPSLAAN</button>
+    </div>
+
+    <!-- AI SCANNER -->
+    <div class="method-content" id="mc-ai">
+      <div class="scanner-area" onclick="document.getElementById('photoInput').click()">
+        <div class="scanner-icon">📸</div>
+        <div class="scanner-label">Tap om foto te maken of uploaden</div>
+        <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this)">
+      </div>
+      <img class="scanner-preview" id="scanPreview">
+      <div class="igrp"><label>Comment (bijv. "kookte voor 2 personen")</label><input type="text" id="scanComment" placeholder="Optioneel..."></div>
+      <div class="igrp"><label>Foto moment</label>
+        <select id="scanMoment"><option value="before">Voor het eten</option><option value="after">Na het eten</option></select>
+      </div>
+      <button class="btn-primary" onclick="runAIScan()" id="scanBtn" style="margin-bottom:10px;" disabled>📸 ANALYSEER MET AI</button>
+      <div class="ai-result" id="aiResult">
+        <div class="ai-result-title">AI Schatting — Controleer en pas aan</div>
+        <div id="aiMeals"></div>
+        <div class="tot-line" style="margin-top:6px;">Totaal: <span id="aiTot">—</span></div>
+        <button class="btn-primary" onclick="acceptAIScan()" style="margin-top:10px;">✅ ACCEPTEREN & TOEVOEGEN</button>
+      </div>
+    </div>
+
+    <!-- SPORT CALCULATOR -->
+    <div class="method-content" id="mc-sport">
+      <div class="sport-calc">
+        <div class="igrp"><label>Sport</label>
+          <select id="sportType" onchange="calcSport()">
+            <option value="3.5">🚶 Wandelen (rustig)</option>
+            <option value="5.0">🚶 Wandelen (stevig)</option>
+            <option value="8.0">🏃 Hardlopen</option>
+            <option value="6.0">🎾 Padel</option>
+            <option value="5.8">🏊 Zwemmen (rustig)</option>
+            <option value="8.0">🏊 Zwemmen (intensief)</option>
+            <option value="5.0">🚴 Fietsen (rustig)</option>
+            <option value="8.0">🚴 Fietsen (intensief)</option>
+            <option value="5.0">💪 Gym (kracht)</option>
+            <option value="7.0">💪 Gym (cardio)</option>
+            <option value="3.0">🧘 Yoga</option>
+            <option value="4.5">⚽ Voetbal</option>
+            <option value="9.0">🏸 Badminton</option>
+            <option value="6.0">custom">✏️ Eigen sport</option>
+          </select>
+        </div>
+        <div class="g2">
+          <div class="igrp"><label>Duur (minuten)</label><input type="number" id="sportDur" placeholder="45" oninput="calcSport()"></div>
+          <div class="igrp"><label>Intensiteit</label>
+            <select id="sportInt" onchange="calcSport()">
+              <option value="0.8">Laag</option>
+              <option value="1.0" selected>Gemiddeld</option>
+              <option value="1.2">Hoog</option>
+            </select>
+          </div>
+        </div>
+        <div class="sport-result" id="sportResult">
+          <div class="sport-result-val" id="sportKcal">—</div>
+          <div class="sport-result-label">kcal verbrand</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);margin-top:4px;" id="sportFormula">—</div>
+        </div>
+        <button class="btn-primary" style="margin-top:10px;" onclick="addSportToLog()">+ TOEVOEGEN AAN LOG</button>
+      </div>
+    </div>
+
+    <!-- TEMPLATES -->
+    <div class="method-content" id="mc-template">
+      <div class="template-grid" id="templateGrid">
+        <div class="spinner">Laden...</div>
+      </div>
+      <div class="div"></div>
+      <div class="stitle" style="font-size:16px;">Nieuwe template opslaan</div>
+      <div class="g2">
+        <div class="igrp"><label>Naam</label><input type="text" id="tplName" placeholder="bijv. Sirloin lunch"></div>
+        <div class="igrp"><label>Beschrijving</label><input type="text" id="tplFood" placeholder="bijv. 200g sirloin + groenten"></div>
+        <div class="igrp"><label>Kcal</label><input type="number" id="tplKcal" placeholder="350"></div>
+        <div class="igrp"><label>Proteïne (g)</label><input type="number" id="tplProt" placeholder="44"></div>
+        <div class="igrp"><label>Carbs (g)</label><input type="number" id="tplCarbs" placeholder="0"></div>
+        <div class="igrp"><label>Fat (g)</label><input type="number" id="tplFat" placeholder="18"></div>
+      </div>
+      <button class="btn-secondary" onclick="saveTemplate()">TEMPLATE OPSLAAN</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="page" id="pg-dash">
+    <div class="stitle">DASHBOARD</div>
+    <div class="g2" id="dashStats"></div>
+    <div class="bestday" id="bestPanel" style="display:none">
+      <div class="bdtitle">⭐ BESTE DAG — HERHAAL DIT</div>
+      <div class="bdsub" id="bestSub"></div>
+      <div id="bestMeals"></div>
+    </div>
+    <div class="chart-card"><div class="chart-title">Gewicht trend + voorspelling</div><div class="chart-wrap"><canvas id="wChart"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">Calorieën vs doel</div><div class="chart-wrap"><canvas id="kChart"></canvas></div></div>
+    <div class="card">
+      <div class="slabel">Week overzicht</div>
+      <div class="wdays" id="wdays"></div>
+    </div>
+    <div class="card">
+      <div class="slabel">Dagelijkse log</div>
+      <div class="log-table-wrap"><table class="ltable">
+        <thead><tr><th></th><th>Datum</th><th>Gewicht</th><th>Kcal</th><th>Prot</th><th>Deficit</th><th>Sport</th><th>🍺</th></tr></thead>
+        <tbody id="logBody"></tbody>
+      </table></div>
+    </div>
+    <div class="badge-grid" id="badgeGrid"></div>
+  </div>
+
+  <!-- BERICHTEN -->
+  <div class="page" id="pg-msgs">
+    <div class="stitle">BERICHTEN</div>
+    <div id="msgsContainer"><div class="spinner">Laden...</div></div>
+  </div>
+
+  <!-- PROFIEL -->
+  <div class="page" id="pg-profile">
+    <div class="stitle">MIJN PROFIEL</div>
+    <div class="card" style="margin-bottom:14px;">
+      <div class="g2">
+        <div class="igrp"><label>Naam</label><input type="text" id="profName" placeholder="Jouw naam"></div>
+        <div class="igrp"><label>Lengte (cm)</label><input type="number" id="profHeight" placeholder="184"></div>
+        <div class="igrp"><label>Startgewicht (kg)</label><input type="number" id="profSW" step="0.1" placeholder="88.0"></div>
+        <div class="igrp"><label>Doelgewicht (kg)</label><input type="number" id="profGW" step="0.1" placeholder="82.0"></div>
+        <div class="igrp"><label>Geboortejaar</label><input type="number" id="profYear" placeholder="1990"></div>
+        <div class="igrp"><label>Geslacht</label>
+          <select id="profGender"><option value="male">Man</option><option value="female">Vrouw</option></select>
+        </div>
+        <div class="igrp"><label>Nekomvang (cm)</label><input type="number" id="profNeck" step="0.5" placeholder="38"></div>
+        <div class="igrp"><label>Buikomvang (cm)</label><input type="number" id="profWaist" step="0.5" placeholder="90"></div>
+      </div>
+      <button class="btn-primary" onclick="saveProfile()" style="margin-top:6px;">OPSLAAN</button>
+    </div>
+    <div class="card">
+      <div class="slabel">BMI & Vet %</div>
+      <div class="g2">
+        <div><div class="clabel">BMI</div><div class="cval warn" id="profBMI">—</div><div class="csub" id="profBMICat">—</div>
+          <div class="bmi-bar"><div class="bmiseg" style="background:#6b8cff"></div><div class="bmiseg" style="background:#c8ff00"></div><div class="bmiseg" style="background:#ffb800"></div><div class="bmiseg" style="background:#ff6b35"></div><div class="bmiseg" style="background:#ff3b3b"></div></div>
+          <div class="bmimark"><div class="bmidot" id="profBMIDot" style="left:50%"></div></div>
+        </div>
+        <div><div class="clabel">Vet % (Navy)</div><div class="cval warn" id="profFat">—</div><div class="csub" id="profFatCat">—</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="slabel">Voortgang foto's</div>
+      <label class="photo-upload-btn" style="display:block;cursor:pointer;">
+        📸 Voortgang foto uploaden
+        <input type="file" accept="image/*" style="display:none" onchange="uploadProgressPhoto(this)">
+      </label>
+      <div class="photo-grid" id="photoGrid"></div>
+    </div>
+  </div>
+
+  <!-- ADMIN -->
+  <div class="page" id="pg-admin">
+    <div class="stitle">👑 ADMIN PANEL</div>
+    <div id="adminUsers"><div class="spinner">Laden...</div></div>
+    <div class="div"></div>
+    <div class="stitle" style="font-size:16px;">PT Bericht sturen</div>
+    <div class="igrp"><label>Naar</label><select id="msgTo"><option value="">Selecteer gebruiker...</option></select></div>
+    <div class="igrp"><label>Bericht</label><textarea id="msgText" style="background:var(--s2);border:1px solid var(--b);border-radius:7px;padding:9px 11px;color:var(--txt);font-family:'DM Mono',monospace;font-size:12px;outline:none;width:100%;height:80px;resize:none;" placeholder="Goed gedaan deze week! Volgende week focus op..."></textarea></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+      <button class="btn-secondary" onclick="sendMsg('Goed gedaan! Houd dit tempo vast 💪')">💪 Goed gedaan</button>
+      <button class="btn-secondary" onclick="sendMsg('Proteïne verhogen — voeg extra eieren of kip toe aan elke maaltijd.')">⚠️ Proteïne laag</button>
+      <button class="btn-secondary" onclick="sendMsg('Alcohol beperken deze week — max 3 Bintangs voor optimaal resultaat.')">🍺 Alcohol waarschuwing</button>
+      <button class="btn-secondary" onclick="sendMsg('Je logt niet elke dag! Consistentie is het belangrijkste — 5 minuten per dag.')">📝 Niet loggen</button>
+    </div>
+    <button class="btn-primary" onclick="sendMsg()">BERICHT STUREN</button>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottomnav" id="bottomNav">
+    <button class="bnav-btn on" onclick="goPage('home')"><span class="bnav-icon">🏠</span>Home</button>
+    <button class="bnav-btn" onclick="goPage('log')"><span class="bnav-icon">➕</span>Log</button>
+    <button class="bnav-btn" onclick="goPage('dash')"><span class="bnav-icon">📊</span>Dashboard</button>
+    <button class="bnav-btn" onclick="goPage('msgs')"><span class="bnav-icon">💬</span>Berichten</button>
+    <button class="bnav-btn" onclick="goPage('profile')"><span class="bnav-icon">👤</span>Profiel</button>
+    <button class="bnav-btn" id="adminBtn" style="display:none" onclick="goPage('admin')"><span class="bnav-icon">👑</span>Admin</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// SUPABASE INIT
+// ═══════════════════════════════════════════════════════════
+const SURL = 'https://clklolfvmutfpavvcwob.supabase.co';
+const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsa2xvbGZ2bXV0ZnBhdnZjd29iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxMTA4MDgsImV4cCI6MjA5MjY4NjgwOH0.a-4a-Pj3-I7CnAmDt83RRBqPJDjz_q7H60lrtU1o_wQ';
+const sb = supabase.createClient(SURL, SKEY);
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let USER = null;
+let PROFILE = null;
+let LOGS = [];
+let TEMPLATES = [];
+let wChart = null, kChart = null;
+const expanded = new Set();
+
+// ═══════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════
+function kcalGoal(a){return a==='padel-gym'?2300:(a==='padel'||a==='gym')?2100:1800;}
+function protGoal(){const w=PROFILE?.start_weight||88;return Math.round(w*2.1);}
+function deficit(e){return(2000+(e.burned||0))-e.kcal;}
+function fmtD(s){return new Date(s+'T00:00:00').toLocaleDateString('nl-NL',{day:'2-digit',month:'short'});}
+function fmtDay(s){return new Date(s+'T00:00:00').toLocaleDateString('nl-NL',{weekday:'short'}).toUpperCase();}
+function today(){return new Date().toISOString().split('T')[0];}
+function bmi(w){const h=(PROFILE?.height_cm||184)/100;return+(w/(h*h)).toFixed(1);}
+function bmiCat(b){if(b<18.5)return{t:'Ondergewicht',c:'blue'};if(b<25)return{t:'Normaal',c:'good'};if(b<30)return{t:'Overgewicht',c:'warn'};return{t:'Obesitas',c:'bad'};}
+function navyFat(w,neck,waist){if(!neck||!waist)return null;const h=PROFILE?.height_cm||184;return+Math.max(3,495/(1.0324-0.19077*Math.log10(waist-neck)+0.15456*Math.log10(h))-450).toFixed(1);}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2500);}
+function scoreDay(d){const def=deficit(d);const pg=protGoal();return Math.min(d.protein/pg,1)*40+(def>0&&def<700?30:def>=700?15:0)-(d.alcohol||0)*5;}
+function weekDates(){const n=new Date();const d=n.getDay();const m=new Date(n);m.setDate(n.getDate()-(d===0?6:d-1));return Array.from({length:7},(_,i)=>{const x=new Date(m);x.setDate(m.getDate()+i);return x.toISOString().split('T')[0];});}
+function actIcon(a){return{padel:'🎾',gym:'💪','padel-gym':'🎾💪',cheat:'🍺',rest:'🛋'}[a]||'🛋';}
+
+// ═══════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════
+async function doLogin(){
+  const email=document.getElementById('authEmail').value.trim();
+  const pass=document.getElementById('authPass').value;
+  const err=document.getElementById('authErr');
+  err.style.display='none';
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){err.textContent=error.message;err.style.display='block';return;}
+  USER=data.user;
+  await loadProfile();
+  showApp();
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+  USER=null;PROFILE=null;LOGS=[];
+  document.getElementById('appShell').style.display='none';
+  document.getElementById('authScreen').style.display='flex';
+}
+
+// ═══════════════════════════════════════════════════════════
+// PROFILE
+// ═══════════════════════════════════════════════════════════
+async function loadProfile(){
+  const {data}=await sb.from('profiles').select('*').eq('id',USER.id).single();
+  PROFILE=data;
+  document.getElementById('topbarName').textContent=PROFILE?.name||USER.email;
+  if(PROFILE?.role==='admin'){
+    document.getElementById('adminBtn').style.display='flex';
+  }
+  // Populate profile form
+  if(PROFILE){
+    document.getElementById('profName').value=PROFILE.name||'';
+    document.getElementById('profHeight').value=PROFILE.height_cm||184;
+    document.getElementById('profSW').value=PROFILE.start_weight||'';
+    document.getElementById('profGW').value=PROFILE.goal_weight||'';
+    document.getElementById('profYear').value=PROFILE.birth_year||'';
+    document.getElementById('profGender').value=PROFILE.gender||'male';
+    document.getElementById('profNeck').value=PROFILE.neck||'';
+    document.getElementById('profWaist').value=PROFILE.waist||'';
+    updateProfileStats();
+  }
+}
+
+async function saveProfile(){
+  const data={
+    name:document.getElementById('profName').value,
+    height_cm:+document.getElementById('profHeight').value||184,
+    start_weight:+document.getElementById('profSW').value||null,
+    goal_weight:+document.getElementById('profGW').value||null,
+    birth_year:+document.getElementById('profYear').value||null,
+    gender:document.getElementById('profGender').value,
+    neck:+document.getElementById('profNeck').value||null,
+    waist:+document.getElementById('profWaist').value||null,
+  };
+  await sb.from('profiles').update(data).eq('id',USER.id);
+  PROFILE={...PROFILE,...data};
+  updateProfileStats();
+  toast('✅ Profiel opgeslagen!');
+}
+
+function updateProfileStats(){
+  const lastLog=LOGS.filter(l=>l.weight).sort((a,b)=>b.date.localeCompare(a.date))[0];
+  const w=lastLog?.weight||PROFILE?.start_weight||88;
+  if(!w)return;
+  const b=bmi(w);const bc=bmiCat(b);
+  document.getElementById('profBMI').textContent=b;
+  document.getElementById('profBMI').className='cval '+bc.c;
+  document.getElementById('profBMICat').textContent=bc.t;
+  document.getElementById('profBMIDot').style.left=Math.max(0,Math.min(100,((b-15)/25)*100))+'%';
+  const neck=PROFILE?.neck||38;const waist=PROFILE?.waist||92;
+  const fat=navyFat(w,neck,waist);
+  if(fat){
+    document.getElementById('profFat').textContent=fat+'%';
+    const fc=fat<18?'good':fat<25?'warn':'bad';
+    document.getElementById('profFat').className='cval '+fc;
+    document.getElementById('profFatCat').textContent=fat<18?'Fit':fat<25?'Gemiddeld':'Te hoog';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOGS
+// ═══════════════════════════════════════════════════════════
+async function loadLogs(){
+  const {data}=await sb.from('daily_logs').select('*, meals(*)').eq('user_id',USER.id).order('date',{ascending:false}).limit(90);
+  LOGS=data||[];
+  renderAll();
+}
+
+async function saveLog(){
+  const date=document.getElementById('logDate').value;
+  if(!date){toast('⚠️ Vul een datum in');return;}
+  const meals=getMeals();
+  if(!meals.length){toast('⚠️ Voeg minimaal 1 maaltijd toe');return;}
+  const kcal=meals.reduce((a,m)=>a+m.kcal,0);
+  const protein=meals.reduce((a,m)=>a+m.protein,0);
+  const carbs=meals.reduce((a,m)=>a+(m.carbs||0),0);
+  const fat=meals.reduce((a,m)=>a+(m.fat||0),0);
+  const entry={
+    user_id:USER.id,date,kcal,protein,carbs,fat,
+    weight:+document.getElementById('logWeight').value||null,
+    water:+document.getElementById('logWater').value||0,
+    alcohol:+document.getElementById('logAlc').value||0,
+    energy:+document.getElementById('logEng').value||null,
+    hunger:+document.getElementById('logHun').value||null,
+    activity:document.getElementById('logAct').value,
+    note:document.getElementById('logNote').value,
+    burned:0
+  };
+  const {data:log,error}=await sb.from('daily_logs').upsert(entry,{onConflict:'user_id,date'}).select().single();
+  if(error){toast('❌ Fout: '+error.message);return;}
+  // Save meals
+  await sb.from('meals').delete().eq('log_id',log.id);
+  const mealRows=meals.map(m=>({...m,log_id:log.id,user_id:USER.id,time_label:m.time,food:m.food}));
+  await sb.from('meals').insert(mealRows);
+  toast('✅ Dag opgeslagen!');
+  clearLogForm();
+  await loadLogs();
+  goPage('home');
+}
+
+function clearLogForm(){
+  document.getElementById('mealRows').innerHTML='';
+  addMealRow();
+  ['logWeight','logWater','logAlc','logNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('logEng').value='';
+  document.getElementById('logHun').value='';
+}
+
+// ═══════════════════════════════════════════════════════════
+// MEAL ROWS
+// ═══════════════════════════════════════════════════════════
+function addMealRow(t='',f='',k='',p='',c='',fa=''){
+  const id='ml_'+Date.now()+'_'+Math.random().toString(36).slice(2,5);
+  const d=document.createElement('div');d.className='meal-line';d.id=id;
+  d.innerHTML=`<input class="mt" placeholder="Avond" value="${t}" oninput="calcTot()">
+<input class="mf" placeholder="200g kipfilet" value="${f}" oninput="calcTot()">
+<input type="number" class="mk" placeholder="280" value="${k}" oninput="calcTot()">
+<input type="number" class="mp" placeholder="44" value="${p}" oninput="calcTot()">
+<input type="number" class="mc" placeholder="12" value="${c}" oninput="calcTot()">
+<input type="number" class="mfa" placeholder="8" value="${fa}" oninput="calcTot()">
+<button class="btn-rm" onclick="document.getElementById('${id}').remove();calcTot()">✕</button>`;
+  document.getElementById('mealRows').appendChild(d);calcTot();
+}
+
+function getMeals(){
+  return Array.from(document.querySelectorAll('.meal-line')).map(r=>({
+    time:r.querySelector('.mt').value.trim()||'—',
+    food:r.querySelector('.mf').value.trim(),
+    kcal:+r.querySelector('.mk').value||0,
+    protein:+r.querySelector('.mp').value||0,
+    carbs:+r.querySelector('.mc').value||0,
+    fat:+r.querySelector('.mfa').value||0
+  })).filter(m=>m.food);
+}
+
+function calcTot(){
+  const m=getMeals();
+  document.getElementById('totLine').textContent=`${m.reduce((a,x)=>a+x.kcal,0)} kcal · ${m.reduce((a,x)=>a+x.protein,0)}g prot · ${m.reduce((a,x)=>a+(x.carbs||0),0)}g carbs · ${m.reduce((a,x)=>a+(x.fat||0),0)}g fat`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// SPORT CALCULATOR
+// ═══════════════════════════════════════════════════════════
+function calcSport(){
+  const met=+document.getElementById('sportType').value;
+  const dur=+document.getElementById('sportDur').value;
+  const int=+document.getElementById('sportInt').value;
+  const w=PROFILE?.start_weight||88;
+  if(!dur)return;
+  const kcal=Math.round(met*int*w*(dur/60));
+  document.getElementById('sportKcal').textContent=kcal;
+  document.getElementById('sportFormula').textContent=`MET ${met} × ${int} × ${w}kg × ${dur}min`;
+  document.getElementById('sportResult').style.display='block';
+}
+
+function addSportToLog(){
+  const kcal=document.getElementById('sportKcal').textContent;
+  const sport=document.getElementById('sportType').options[document.getElementById('sportType').selectedIndex].text;
+  const dur=document.getElementById('sportDur').value;
+  addMealRow('Sport',`${sport} ${dur}min`,0,0,0,0);
+  // Update burned field
+  const existing=+document.getElementById('logAlc').getAttribute('data-burned')||0;
+  document.getElementById('logAct').value='padel';
+  setMethod('manual');
+  toast('✅ Sport toegevoegd — pas activiteit aan in het formulier');
+}
+
+// ═══════════════════════════════════════════════════════════
+// AI SCANNER
+// ═══════════════════════════════════════════════════════════
+let scanBase64=null;
+
+function handlePhoto(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    scanBase64=e.target.result.split(',')[1];
+    document.getElementById('scanPreview').src=e.target.result;
+    document.getElementById('scanPreview').style.display='block';
+    document.getElementById('scanBtn').disabled=false;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function runAIScan(){
+  if(!scanBase64){toast('⚠️ Upload eerst een foto');return;}
+  document.getElementById('scanBtn').textContent='⏳ Analyseren...';
+  document.getElementById('scanBtn').disabled=true;
+  const comment=document.getElementById('scanComment').value;
+  const moment=document.getElementById('scanMoment').value;
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:'image/jpeg',data:scanBase64}},
+          {type:'text',text:`Je bent een voedingsdeskundige. Analyseer dit bord eten${comment?' (opmerking: '+comment+')':''}. Dit is een foto ${moment==='before'?'voor':'na'} het eten. Geef een JSON array terug met de maaltijdcomponenten. Formaat: [{"food":"naam","kcal":100,"protein":10,"carbs":5,"fat":3}]. Schat de grammen realistisch. Antwoord ALLEEN met de JSON array, niets anders.`}
+        ]}]}
+      )
+    });
+    const data=await resp.json();
+    const txt=data.content[0].text.trim();
+    const items=JSON.parse(txt);
+    document.getElementById('aiMeals').innerHTML=items.map((item,i)=>`
+      <div style="display:grid;grid-template-columns:1fr 60px 50px 50px 50px;gap:6px;margin-bottom:6px;align-items:center;">
+        <input value="${item.food}" id="ai_food_${i}" style="background:#111;border:1px solid #252525;border-radius:5px;padding:6px 8px;color:var(--txt);font-family:'DM Mono',monospace;font-size:11px;outline:none;width:100%;">
+        <input type="number" value="${item.kcal}" id="ai_kcal_${i}" style="background:#111;border:1px solid #252525;border-radius:5px;padding:6px 8px;color:var(--a2);font-family:'DM Mono',monospace;font-size:11px;outline:none;width:100%;">
+        <input type="number" value="${item.protein}" id="ai_prot_${i}" style="background:#111;border:1px solid #252525;border-radius:5px;padding:6px 8px;color:var(--a);font-family:'DM Mono',monospace;font-size:11px;outline:none;width:100%;">
+        <input type="number" value="${item.carbs}" id="ai_carbs_${i}" style="background:#111;border:1px solid #252525;border-radius:5px;padding:6px 8px;color:var(--purple);font-family:'DM Mono',monospace;font-size:11px;outline:none;width:100%;">
+        <input type="number" value="${item.fat}" id="ai_fat_${i}" style="background:#111;border:1px solid #252525;border-radius:5px;padding:6px 8px;color:var(--teal);font-family:'DM Mono',monospace;font-size:11px;outline:none;width:100%;">
+      </div>`).join('');
+    document.getElementById('aiResult').dataset.count=items.length;
+    document.getElementById('aiResult').style.display='block';
+    const tot=items.reduce((a,i)=>a+i.kcal,0);
+    document.getElementById('aiTot').textContent=`${tot} kcal · ${items.reduce((a,i)=>a+i.protein,0)}g prot`;
+  }catch(e){toast('❌ AI fout: '+e.message);}
+  document.getElementById('scanBtn').textContent='📸 ANALYSEER MET AI';
+  document.getElementById('scanBtn').disabled=false;
+}
+
+function acceptAIScan(){
+  const count=+document.getElementById('aiResult').dataset.count;
+  for(let i=0;i<count;i++){
+    const f=document.getElementById('ai_food_'+i)?.value;
+    const k=document.getElementById('ai_kcal_'+i)?.value;
+    const p=document.getElementById('ai_prot_'+i)?.value;
+    const c=document.getElementById('ai_carbs_'+i)?.value;
+    const fa=document.getElementById('ai_fat_'+i)?.value;
+    if(f)addMealRow('AI scan',f,k,p,c,fa);
+  }
+  setMethod('manual');
+  toast('✅ Maaltijden toegevoegd — controleer en sla op');
+}
+
+// ═══════════════════════════════════════════════════════════
+// TEMPLATES
+// ═══════════════════════════════════════════════════════════
+async function loadTemplates(){
+  const {data}=await sb.from('meal_templates').select('*').eq('user_id',USER.id);
+  TEMPLATES=data||[];
+  renderTemplates();
+}
+
+function renderTemplates(){
+  const grid=document.getElementById('templateGrid');
+  if(!TEMPLATES.length){grid.innerHTML='<div style="color:var(--dim);font-family:DM Mono,monospace;font-size:11px;">Nog geen templates. Sla favoriete maaltijden op hieronder.</div>';return;}
+  grid.innerHTML=TEMPLATES.map(t=>`<div class="template-card" onclick="useTemplate('${t.id}')">
+    <div class="tc-name">${t.name}</div>
+    <div class="tc-macros">${t.food}</div>
+    <div class="tc-macros" style="margin-top:3px;color:var(--a2)">${t.kcal}kcal · ${t.protein}g P · ${t.carbs}g C · ${t.fat}g F</div>
+  </div>`).join('');
+}
+
+function useTemplate(id){
+  const t=TEMPLATES.find(x=>x.id===id);if(!t)return;
+  addMealRow('',t.food,t.kcal,t.protein,t.carbs,t.fat);
+  setMethod('manual');
+  toast('✅ Template toegevoegd');
+}
+
+async function saveTemplate(){
+  const name=document.getElementById('tplName').value.trim();
+  const food=document.getElementById('tplFood').value.trim();
+  if(!name||!food){toast('⚠️ Vul naam en beschrijving in');return;}
+  await sb.from('meal_templates').insert({user_id:USER.id,name,food,kcal:+document.getElementById('tplKcal').value||0,protein:+document.getElementById('tplProt').value||0,carbs:+document.getElementById('tplCarbs').value||0,fat:+document.getElementById('tplFat').value||0});
+  toast('✅ Template opgeslagen!');
+  await loadTemplates();
+  ['tplName','tplFood','tplKcal','tplProt','tplCarbs','tplFat'].forEach(id=>document.getElementById(id).value='');
+}
+
+// ═══════════════════════════════════════════════════════════
+// MESSAGES
+// ═══════════════════════════════════════════════════════════
+async function loadMessages(){
+  const {data}=await sb.from('pt_messages').select('*').eq('to_user_id',USER.id).order('created_at',{ascending:false});
+  const msgs=data||[];
+  const unread=msgs.filter(m=>!m.read).length;
+  document.getElementById('notifDot').style.display=unread>0?'block':'none';
+
+  // Home banners (unread only)
+  document.getElementById('msgBanners').innerHTML=msgs.filter(m=>!m.read).map(m=>`
+    <div class="msg-banner" onclick="markRead('${m.id}')">
+      <div class="msg-from">💬 PT Coach</div>
+      <div class="msg-text">${m.message}</div>
+    </div>`).join('');
+
+  // Full messages page
+  document.getElementById('msgsContainer').innerHTML=msgs.length?msgs.map(m=>`
+    <div class="msg-card${m.read?'':' msg-unread'}">
+      <div class="msg-header"><span class="msg-from2">💬 PT Coach</span><span class="msg-date">${new Date(m.created_at).toLocaleDateString('nl-NL',{day:'2-digit',month:'short'})}</span></div>
+      <div class="msg-body">${m.message}</div>
+    </div>`).join(''):'<div style="color:var(--dim);font-family:DM Mono,monospace;font-size:12px;padding:20px 0;">Nog geen berichten van je PT.</div>';
+}
+
+async function markRead(id){
+  await sb.from('pt_messages').update({read:true}).eq('id',id);
+  await loadMessages();
+}
+
+async function sendMsg(preset){
+  const to=document.getElementById('msgTo').value;
+  const text=preset||document.getElementById('msgText').value.trim();
+  if(!to||!text){toast('⚠️ Selecteer gebruiker en typ een bericht');return;}
+  await sb.from('pt_messages').insert({from_user_id:USER.id,to_user_id:to,message:text});
+  document.getElementById('msgText').value='';
+  toast('✅ Bericht verstuurd!');
+}
+
+// ═══════════════════════════════════════════════════════════
+// ADMIN
+// ═══════════════════════════════════════════════════════════
+async function loadAdmin(){
+  if(PROFILE?.role!=='admin')return;
+  const {data:users}=await sb.from('profiles').select('*');
+  const {data:allLogs}=await sb.from('daily_logs').select('*').order('date',{ascending:false});
+
+  // Populate msg dropdown
+  const msgTo=document.getElementById('msgTo');
+  msgTo.innerHTML='<option value="">Selecteer gebruiker...</option>';
+  (users||[]).filter(u=>u.id!==USER.id).forEach(u=>{
+    msgTo.innerHTML+=`<option value="${u.id}">${u.name||u.email}</option>`;
+  });
+
+  // Render user cards
+  document.getElementById('adminUsers').innerHTML=(users||[]).filter(u=>u.id!==USER.id).map(u=>{
+    const uLogs=(allLogs||[]).filter(l=>l.user_id===u.id);
+    const lastLog=uLogs[0];
+    const daysSince=lastLog?Math.floor((new Date()-new Date(lastLog.date+'T00:00:00'))/864e5):999;
+    const streak=calcStreak(uLogs);
+    const status=daysSince===0?'Actief vandaag':daysSince===1?'Actief gisteren':daysSince<=3?`${daysSince}d geleden`:'Niet actief';
+    const sClass=daysSince===0?'sb-green':daysSince<=2?'sb-warn':'sb-red';
+    return`<div class="user-card">
+      <div class="user-avatar">${(u.name||u.email||'?')[0].toUpperCase()}</div>
+      <div class="user-info">
+        <div class="user-name">${u.name||u.email}</div>
+        <div class="user-meta">Streak: ${streak}🔥 · Logs: ${uLogs.length} · Gewicht: ${lastLog?.weight?lastLog.weight+'kg':'—'}</div>
+      </div>
+      <div class="user-status">
+        <span class="status-badge ${sClass}">${status}</span>
+        ${daysSince>=2?'<div class="flag">🚩</div>':''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function calcStreak(logs){
+  const sorted=[...logs].sort((a,b)=>b.date.localeCompare(a.date));
+  let s=0;for(const l of sorted){if(l.kcal<=kcalGoal(l.activity)+200)s++;else break;}return s;
+}
+
+// ═══════════════════════════════════════════════════════════
+// PROGRESS PHOTOS
+// ═══════════════════════════════════════════════════════════
+async function uploadProgressPhoto(input){
+  const file=input.files[0];if(!file)return;
+  const path=`${USER.id}/${Date.now()}.jpg`;
+  const {error}=await sb.storage.from('photos').upload(path,file);
+  if(error){toast('❌ Upload fout: '+error.message);return;}
+  const url=sb.storage.from('photos').getPublicUrl(path).data.publicUrl;
+  await sb.from('progress_photos').insert({user_id:USER.id,photo_url:url,week_number:Math.ceil((new Date()-new Date('2026-04-20'))/(7*864e5))});
+  toast('✅ Foto geupload!');
+  loadProgressPhotos();
+}
+
+async function loadProgressPhotos(){
+  const {data}=await sb.from('progress_photos').select('*').eq('user_id',USER.id).order('created_at',{ascending:false}).limit(9);
+  document.getElementById('photoGrid').innerHTML=(data||[]).map(p=>`<div class="photo-item"><img src="${p.photo_url}" loading="lazy"></div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER ALL
+// ═══════════════════════════════════════════════════════════
+function renderAll(){
+  renderHome();
+  renderDashboard();
+}
+
+function renderHome(){
+  const todayLog=LOGS.find(l=>l.date===today());
+  const pg=protGoal();
+  const kg=kcalGoal(todayLog?.activity||'rest');
+
+  // Streak
+  const streak=calcStreak(LOGS);
+  document.getElementById('homeStreak').textContent=streak;
+  document.getElementById('homeStreakSub').textContent=streak>0?'Houd vol!':'Start vandaag';
+
+  // Today meters
+  if(todayLog){
+    document.getElementById('hKcal').textContent=`${todayLog.kcal} / ${kg} kcal`;
+    document.getElementById('hKcalBar').style.width=Math.min(110,(todayLog.kcal/kg)*100)+'%';
+    document.getElementById('hProt').textContent=`${todayLog.protein}g / ${pg}g`;
+    document.getElementById('hProtBar').style.width=Math.min(110,(todayLog.protein/pg)*100)+'%';
+    document.getElementById('hWater').textContent=`${todayLog.water||0}L / 3L`;
+    document.getElementById('hWaterBar').style.width=Math.min(100,((todayLog.water||0)/3)*100)+'%';
+  } else {
+    document.getElementById('hKcal').textContent='Nog niet gelogd';
+    document.getElementById('hProt').textContent='—';
+    document.getElementById('hWater').textContent='—';
+  }
+
+  // Weight cards
+  const lastW=LOGS.find(l=>l.weight);
+  const sw=PROFILE?.start_weight||88;const gw=PROFILE?.goal_weight||82;
+  if(lastW){
+    document.getElementById('hWeight').textContent=lastW.weight.toFixed(1)+' kg';
+    document.getElementById('hWeightSub').textContent='Gemeten '+fmtD(lastW.date);
+    const left=Math.max(0,lastW.weight-gw).toFixed(1);
+    document.getElementById('hGoal').textContent=left+' kg';
+    document.getElementById('hGoalSub').textContent='nog te gaan naar '+gw+'kg';
+  }
+
+  // Alerts
+  const alerts=[];
+  if(todayLog&&todayLog.protein<Math.round(pg*0.8))alerts.push({c:'aw',m:`⚠️ Proteïne te laag: ${todayLog.protein}g — doel ${pg}g`});
+  if(!todayLog)alerts.push({c:'aw',m:'📝 Nog niet gelogd vandaag — tap + LOG MAALTIJD'});
+  document.getElementById('homeAlerts').innerHTML=alerts.map(a=>`<div class="alert ${a.c}">${a.m}</div>`).join('');
+
+  updateProfileStats();
+}
+
+function renderDashboard(){
+  const data=[...LOGS].sort((a,b)=>a.date.localeCompare(b.date));
+  const last=data[data.length-1];
+  const pg=protGoal();
+  const sw=PROFILE?.start_weight||88;const gw=PROFILE?.goal_weight||82;
+
+  // Stat cards
+  const lost=last?sw-last.weight:0;
+  const defs=data.map(d=>deficit(d));
+  const avgDef=defs.length?Math.round(defs.reduce((a,b)=>a+b,0)/defs.length):0;
+  document.getElementById('dashStats').innerHTML=`
+    <div class="card"><div class="clabel">Huidig gewicht</div><div class="cval neu">${last?.weight?last.weight.toFixed(1)+' kg':'—'}</div><div class="csub">${last?fmtD(last.date):'—'}</div></div>
+    <div class="card"><div class="clabel">Verloren</div><div class="cval ${lost>0?'good':'bad'}">${lost>0?'-':'+'}${Math.abs(+lost.toFixed(1))} kg</div><div class="csub">Van ${sw} kg</div></div>
+    <div class="card"><div class="clabel">Nog te gaan</div><div class="cval neu">${last?Math.max(0,last.weight-gw).toFixed(1):gw-sw} kg</div><div class="csub">Doel: ${gw} kg</div></div>
+    <div class="card"><div class="clabel">Gem. deficit</div><div class="cval ${avgDef>0?'good':'bad'}">${avgDef>0?'+':''}${avgDef}</div><div class="csub">kcal/dag</div></div>`;
+
+  // Best day
+  if(data.length){
+    const best=[...data].sort((a,b)=>scoreDay(b)-scoreDay(a))[0];
+    document.getElementById('bestPanel').style.display='block';
+    document.getElementById('bestSub').textContent=`${fmtD(best.date)} · ${best.kcal} kcal · ${best.protein}g proteïne · ${best.note||''}`;
+    document.getElementById('bestMeals').innerHTML=(best.meals||[]).filter(m=>m.kcal>0).map(m=>`<div class="bdmeal"><span class="bdt">${m.time_label||m.time||'—'}</span><span class="bdf">${m.food}</span><span class="bdk">${m.kcal}kcal</span><span class="bdp">${m.protein}g</span></div>`).join('');
+  }
+
+  // Week days
+  const wkd=weekDates();
+  document.getElementById('wdays').innerHTML=wkd.map(date=>{
+    const e=data.find(d=>d.date===date);
+    if(!e)return`<div class="wday empty"><div class="wdl">${fmtDay(date)}</div><div class="wdw">—</div></div>`;
+    const ok=e.kcal<=kcalGoal(e.activity)+200;
+    return`<div class="wday ${ok?'ok':'off'}"><div class="wdl">${fmtDay(date)}</div><div class="wdw">${e.weight?e.weight.toFixed(1):'—'}</div><div class="wdi">${actIcon(e.activity)}</div><div class="wdk">${e.kcal}</div></div>`;
+  }).join('');
+
+  // Log table
+  const tbody=document.getElementById('logBody');
+  tbody.innerHTML=data.length?[...data].reverse().map(d=>{
+    const df=deficit(d);const isExp=expanded.has(d.date);const hm=d.meals?.length;
+    return`<tr class="drow" onclick="toggleRow('${d.date}')">
+      <td><span class="xi${isExp?' open':''}" id="xi_${d.date}">${hm?'▶':'·'}</span></td>
+      <td>${fmtD(d.date)}</td><td>${d.weight?d.weight.toFixed(1)+' kg':'—'}</td>
+      <td>${d.kcal}</td><td style="color:${d.protein<Math.round(pg*0.8)?'var(--warn)':'inherit'}">${d.protein}g</td>
+      <td class="${df>0?'def':'sur'}">${df>0?'-':'+'} ${Math.abs(df)}</td>
+      <td>${actIcon(d.activity)}</td><td>${d.alcohol?d.alcohol+'🍺':'—'}</td>
+    </tr>${hm?`<tr id="mr_${d.date}" class="msubrow${isExp?'':' hide'}"><td colspan="8" style="padding:0;"><table style="width:100%;border-collapse:collapse;background:#0b0b0b;">${d.meals.map(m=>`<tr><td style="padding:5px 8px;font-size:10px;color:var(--dim)">${m.time_label||'—'}</td><td style="padding:5px 8px;font-size:11px">${m.food}</td><td style="padding:5px 8px;font-size:10px;color:var(--a2);text-align:right">${m.kcal}kcal</td><td style="padding:5px 8px;font-size:10px;color:var(--a);text-align:right">${m.protein}g</td></tr>`).join('')}</table></td></tr>`:''}`;
+  }).join(''):'<tr><td colspan="8" style="color:var(--dim);text-align:center;padding:20px;font-family:DM Mono,monospace;font-size:11px;">Geen data — log je eerste dag!</td></tr>';
+
+  // Charts
+  const labels=data.map(d=>fmtD(d.date));
+  const weights=data.map(d=>d.weight||null);
+  const kcals=data.map(d=>d.kcal);
+  const goals=data.map(d=>kcalGoal(d.activity));
+  const fLabels=[...labels];const fData=data.map(()=>null);
+  if(last?.weight){for(let i=1;i<=84;i++){const fd=new Date(last.date+'T00:00:00');fd.setDate(fd.getDate()+i);const proj=Math.max(gw,last.weight-(0.5/7)*i);fLabels.push(fmtD(fd.toISOString().split('T')[0]));fData.push(proj);if(proj<=gw)break;}}
+
+  const bs={x:{grid:{color:'#1a1a1a'},ticks:{color:'#444',font:{family:'DM Mono',size:8}}},y:{grid:{color:'#1a1a1a'},ticks:{color:'#444',font:{family:'DM Mono',size:8}}}};
+  const lo={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}};
+
+  if(wChart)wChart.destroy();
+  wChart=new Chart(document.getElementById('wChart'),{type:'line',data:{labels:fLabels,datasets:[
+    {data:[...weights,...fData.slice(weights.length).map(()=>null)],borderColor:'#c8ff00',backgroundColor:'rgba(200,255,0,.05)',borderWidth:2,pointRadius:3,pointBackgroundColor:'#c8ff00',tension:.3,fill:true,spanGaps:true},
+    {data:fData,borderColor:'rgba(200,255,0,.3)',borderWidth:1.5,pointRadius:0,tension:.3,borderDash:[5,4],spanGaps:true},
+    {data:fLabels.map(()=>gw),borderColor:'#2a2a2a',borderDash:[4,4],borderWidth:1,pointRadius:0}
+  ]},options:{...lo,scales:{...bs,y:{...bs.y,min:Math.min(gw-1,...weights.filter(Boolean))-0.5,max:Math.max(sw,...weights.filter(Boolean))+0.5}}}});
+
+  if(kChart)kChart.destroy();
+  kChart=new Chart(document.getElementById('kChart'),{type:'bar',data:{labels,datasets:[
+    {data:kcals,backgroundColor:kcals.map((k,i)=>k>goals[i]?'rgba(255,59,59,.65)':'rgba(255,107,53,.65)'),borderRadius:3},
+    {type:'line',data:goals,borderColor:'#c8ff00',borderDash:[4,4],borderWidth:1.5,pointRadius:0}
+  ]},options:{...lo,scales:bs}});
+
+  // Badges
+  const BADGES=[
+    {icon:'🚀',name:'First Step',desc:'Eerste dag gelogd',fn:d=>d.length>=1},
+    {icon:'🔥',name:'7 Dagen',desc:'7 dagen getrackt',fn:d=>{const s=[...d].sort((a,b)=>a.date.localeCompare(b.date));let c=1,m=1;for(let i=1;i<s.length;i++){const di=(new Date(s[i].date)-new Date(s[i-1].date))/864e5;c=di===1?c+1:1;m=Math.max(m,c);}return m>=7;}},
+    {icon:'💪',name:'Proteïne Week',desc:'5 dagen doel gehaald',fn:d=>{const p=protGoal();let c=0;for(const x of d){c=x.protein>=p?c+1:0;if(c>=5)return true;}return false;}},
+    {icon:'🚫',name:'Droge Week',desc:'7 dagen geen alcohol',fn:d=>d.filter(x=>!x.alcohol).length>=7},
+    {icon:'📉',name:'1 Kilo',desc:'1 kg verloren',fn:d=>{const l=d.filter(x=>x.weight).sort((a,b)=>b.date.localeCompare(a.date))[0];return l&&(sw-l.weight)>=1;}},
+    {icon:'🏆',name:'3 Kilo',desc:'3 kg verloren',fn:d=>{const l=d.filter(x=>x.weight).sort((a,b)=>b.date.localeCompare(a.date))[0];return l&&(sw-l.weight)>=3;}},
+    {icon:'🎯',name:'Doel!',desc:'Doelgewicht bereikt',fn:d=>{const l=d.filter(x=>x.weight).sort((a,b)=>b.date.localeCompare(a.date))[0];return l&&l.weight<=gw;}},
+    {icon:'💧',name:'Hydrated',desc:'7 dagen 2.5L+ water',fn:d=>d.filter(x=>x.water>=2.5).length>=7},
+  ];
+  document.getElementById('badgeGrid').innerHTML=BADGES.map(b=>{const earned=b.fn(data);return`<div class="badge-card${earned?' earned':' locked'}"><div class="bicon">${b.icon}</div><div class="bname">${b.name}</div><div class="bdesc">${b.desc}</div>${earned?'<div class="bearned">✅ VERDIEND</div>':''}</div>`;}).join('');
+}
+
+function toggleRow(date){
+  const r=document.getElementById('mr_'+date);const x=document.getElementById('xi_'+date);
+  if(!r)return;
+  if(expanded.has(date)){expanded.delete(date);r.classList.add('hide');x?.classList.remove('open');}
+  else{expanded.add(date);r.classList.remove('hide');x?.classList.add('open');}
+}
+
+// ═══════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════
+function setMethod(name){
+  document.querySelectorAll('.method-tab').forEach((t,i)=>{const n=['manual','ai','sport','template'][i];t.classList.toggle('on',n===name);});
+  document.querySelectorAll('.method-content').forEach(c=>c.classList.toggle('on',c.id==='mc-'+name));
+  if(name==='template')loadTemplates();
+}
+
+function goPage(name){
+  const pages=['home','log','dash','msgs','profile','admin'];
+  document.querySelectorAll('.page').forEach((p,i)=>p.classList.toggle('on',p.id==='pg-'+name));
+  document.querySelectorAll('.bnav-btn').forEach((b,i)=>b.classList.toggle('on',pages[i]===name));
+  if(name==='msgs')loadMessages();
+  if(name==='admin')loadAdmin();
+  if(name==='profile')loadProgressPhotos();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SHOW APP
+// ═══════════════════════════════════════════════════════════
+function showApp(){
+  document.getElementById('authScreen').style.display='none';
+  document.getElementById('appShell').style.display='block';
+  document.getElementById('logDate').value=today();
+  addMealRow();
+  loadLogs();
+  loadMessages();
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUTO LOGIN CHECK
+// ═══════════════════════════════════════════════════════════
+(async()=>{
+  const {data:{session}}=await sb.auth.getSession();
+  if(session){USER=session.user;await loadProfile();showApp();}
+})();
+</script>
+</body>
+</html>
